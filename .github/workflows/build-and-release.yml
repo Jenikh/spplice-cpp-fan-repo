@@ -17,22 +17,23 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y \
-            build-essential \
-            cmake \
-            git \
-            qtbase5-dev \
-            qtchooser \
-            qt5-qmake \
-            qtbase5-dev-tools \
-            libgl1-mesa-dev \
-            upx-ucl \
-            zip \
-            wget \
-            libfuse2 \
-            dpkg-dev \
-            fakeroot \
-            mingw-w64 \
-            strip
+          build-essential \
+          cmake \
+          git \
+          qtbase5-dev \
+          qtchooser \
+          qt5-qmake \
+          qtbase5-dev-tools \
+          libgl1-mesa-dev \
+          upx-ucl \
+          zip \
+          wget \
+          libfuse2 \
+          dpkg-dev \
+          fakeroot \
+          mingw-w64 \
+          binutils
+
 
       - name: Make autobuild.sh executable
         run: chmod +x ./autobuild.sh
