@@ -1,137 +1,47 @@
-#!/usr/bin/env bash
-set -e
-
-build_root=${BUILD_ROOT:-"$PWD"}
-
-target_windows=false
-target_linux=false
-
-for arg in "$@"; do
-  if [ "$arg" == "--win" ] || [ "$arg" == "--windows" ]; then
-  echo "Building Qt5 for Windows..."
-    target_windows=true
-  elif [ "$arg" == "--both" ]; then
-    echo "Building Qt5 for Linux and Windows..."
-    target_windows=true
-    target_linux=true
-  elif [ "$arg" == "--linux" ]; then
-    echo "Building Qt5 for Linux..."
-    target_linux=true
-  fi
-done
-
-if [ "$#" -eq 0 ]; then
-  echo "No arguments provided. Assuming Linux build..."
-  target_linux=true
-fi
-
-
-# Pull, configure, and statically build Qt5.
-# Doing this, of course, assumes you agree to comply with the Qt open source licence.
-if [ ! -d "$build_root/qt5build" ]; then
-  cd $build_root/scripts
-
-  if [ "$target_both" == true ]; then
-    ./qt5setup.sh --both
-  elif [ "$target_windows" == true ]; then
-    ./qt5setup.sh --win
-  else
-    ./qt5setup.sh
-  fi
-
-  cd $build_root
-fi
-
-
-echo "Using build root: $build_root"
-cd $build_root
-
-# Compile UI files into headers.
-echo "Compiling UI files..."
-cd $build_root/ui
-ui_path="win32";
+# === Build .deb package ===
 if [ "$target_linux" == true ]; then
-  ui_path="linux";
+  echo "Packing .deb..."
+
+  mkdir -p $build_root/deb/usr/bin
+  cp $build_root/dist/linux/SppliceCPP $build_root/deb/usr/bin/spplice
+
+  mkdir -p $build_root/deb/DEBIAN
+  cat > $build_root/deb/DEBIAN/control <<EOF
+Package: spplice
+Version: 1.0.0
+Section: base
+Priority: optional
+Architecture: amd64
+Depends: libqt5core5a, libqt5widgets5
+Maintainer: Spplice Team
+Description: Spplice C++ Package Manager UI
+EOF
+
+  dpkg-deb --build $build_root/deb $build_root/dist/spplice.deb
 fi
 
-$build_root/qt5build/$ui_path/bin/uic -o mainwindow.h MainWindow.ui
-$build_root/qt5build/$ui_path/bin/uic -o packageitem.h PackageItem.ui
-$build_root/qt5build/$ui_path/bin/uic -o errordialog.h ErrorDialog.ui
-$build_root/qt5build/$ui_path/bin/uic -o packageinfo.h PackageInfo.ui
-$build_root/qt5build/$ui_path/bin/uic -o repositories.h Repositories.ui
-$build_root/qt5build/$ui_path/bin/uic -o settings.h Settings.ui
 
-cd $build_root
-
-# Build application dependencies if not present
-if [ ! -d "./deps" ]; then
-  echo "Building dependencies..."
-  cd scripts
-  ./deps.sh
-  cd $build_root
-fi
-
-# Create a directory for the distributable files.
-mkdir -p dist
-
-# Build for the specified platform(s) using CMake.
-if [ "$target_windows" == true ]; then
-  rm -rf build; mkdir build; cd build
-
-  rm -rf $build_root/dist/win32; mkdir $build_root/dist/win32
-  sed -i "s|^// #define TARGET_WINDOWS|#define TARGET_WINDOWS|" $build_root/globals.h
-  cmake -DCMAKE_TOOLCHAIN_FILE="$build_root/scripts/windows.cmake" $build_root/scripts
-
-  make -j$(nproc)
-  mv ./SppliceCPP.exe $build_root/dist/win32/SppliceCPP.exe
-
-  cd $build_root
-fi
-
+# === Build .AppImage ===
 if [ "$target_linux" == true ]; then
-  rm -rf build; mkdir build; cd build
+  echo "Packing .AppImage..."
 
-  rm -rf $build_root/dist/linux; mkdir $build_root/dist/linux
-  sed -i "s|^#define TARGET_WINDOWS|// #define TARGET_WINDOWS|" $build_root/globals.h
-  cmake $build_root/scripts
+  mkdir -p $build_root/appdir/usr/bin
+  cp $build_root/dist/linux/SppliceCPP $build_root/appdir/usr/bin/spplice
 
-  make -j$(nproc)
-  mv ./SppliceCPP $build_root/dist/linux/SppliceCPP
+  mkdir -p $build_root/appdir/usr/share/applications
+  cat > $build_root/appdir/usr/share/applications/spplice.desktop <<EOF
+[Desktop Entry]
+Name=Spplice
+Exec=spplice
+Icon=spplice
+Type=Application
+Categories=Development;
+EOF
 
-  cd $build_root
-fi
+  mkdir -p $build_root/appdir/usr/share/icons
+  cp $build_root/logo.png $build_root/appdir/usr/share/icons/spplice.png 2>/dev/null || true
 
-cd dist
-
-# Prepare the Windows binary for distribution.
-if [ "$target_windows" == true ]; then
-  # Copy project dependencies
-  cp $build_root/deps/win32/lib/libcurl-4.dll                      ./win32
-  cp $build_root/deps/win32/lib/archive.dll                        ./win32
-  cp $build_root/deps/win32/lib/liblzma.dll                        ./win32
-  cp $build_root/deps/win32/lib/libcrypto-1_1-x64.dll              ./win32
-  # Copy Qt5 dependencies
-  cp $build_root/qt5build/win32/bin/Qt5Core.dll                    ./win32
-  cp $build_root/qt5build/win32/bin/Qt5Gui.dll                     ./win32
-  cp $build_root/qt5build/win32/bin/Qt5Widgets.dll                 ./win32
-  # Copy Qt5 plugins
-  mkdir ./win32/platforms
-  cp -r $build_root/qt5build/win32/plugins/platforms/qwindows.dll  ./win32/platforms
-  cp -r $build_root/qt5build/win32/plugins/imageformats            ./win32
-  # Copy C++ dependencies
-  cp /usr/x86_64-w64-mingw32/lib/libwinpthread-1.dll               ./win32
-  cp /usr/lib/gcc/x86_64-w64-mingw32/12-posix/libgcc_s_seh-1.dll   ./win32
-  cp /usr/lib/gcc/x86_64-w64-mingw32/12-posix/libstdc++-6.dll      ./win32
-  # Strip debug symbols
-  strip ./win32/SppliceCPP.exe
-  strip ./win32/*.dll
-  strip ./win32/platforms/*.dll
-  strip ./win32/imageformats/*.dll
-fi
-
-if [ "$target_linux" == true ]; then
-  # Strip debug symbols
-  strip ./linux/SppliceCPP
-  # Pack with UPX
-  $build_root/deps/shared/upx/upx --best --lzma ./linux/SppliceCPP
+  wget -q https://github.com/AppImage/AppImageKit/releases/download/13/appimagetool-x86_64.AppImage -O $build_root/appimagetool
+  chmod +x $build_root/appimagetool
+  $build_root/appimagetool $build_root/appdir $build_root/dist/spplice.AppImage
 fi
