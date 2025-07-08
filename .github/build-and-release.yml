@@ -1,0 +1,75 @@
+name: Build & Release (all formats)
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt update
+          sudo apt install -y \
+            build-essential \
+            cmake \
+            git \
+            qtbase5-dev \
+            qtchooser \
+            qt5-qmake \
+            qtbase5-dev-tools \
+            libgl1-mesa-dev \
+            upx-ucl \
+            zip \
+            wget \
+            libfuse2 \
+            dpkg-dev \
+            fakeroot \
+            mingw-w64 \
+            strip
+
+      - name: Make autobuild.sh executable
+        run: chmod +x ./autobuild.sh
+
+      - name: Run autobuild.sh for all formats
+        run: ./autobuild.sh --both
+
+      - name: Prepare release files
+        run: |
+          mkdir -p release
+
+          # Linux binary
+          cp dist/linux/SppliceCPP release/SppliceCPP-linux
+
+          # Windows binary
+          cp dist/win32/SppliceCPP.exe release/SppliceCPP.exe
+
+          # Windows zip
+          cd dist/win32 && zip -r ../../release/SppliceCPP-win32.zip . && cd -
+
+          # .deb and .AppImage
+          cp dist/*.deb release/ || true
+          cp dist/*.AppImage release/ || true
+
+      - name: List release contents
+        run: ls -lh release/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          files: |
+            release/SppliceCPP-linux
+            release/SppliceCPP.exe
+            release/SppliceCPP-win32.zip
+            release/*.deb
+            release/*.AppImage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
