@@ -4,8 +4,8 @@
 #define MyAppName "Spplice"
 #define MyAppVersion "0.9.5"
 #define MyAppPublisher "PortalRunner"
-#define MyAppURL "https://p2r3.com/spplice"
-#define MyAppExeName "SppliceCPP.exe"
+#define MyAppURL "https://github.com/Jenikh/spplice-cpp-fan-repo/"
+#define MyAppExeName "Spplice.exe"
 #define MyAppAssocName "Spplice Package File"
 #define MyAppAssocExt ".sppkg"
 #define MyAppAssocKey StringChange(MyAppAssocName, " ", "") + MyAppAssocExt
