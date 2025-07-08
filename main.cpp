@@ -153,8 +153,7 @@ LONG WINAPI windowsExceptionHandler (EXCEPTION_POINTERS* info) {
 #endif
 
 // A link to the index for the global Spplice repository
-const std::string globalRepository = "https://p2r3.github.io/spplice-repo/index.json";
-
+const std::string globalRepository = "https://JenikH.github.io/spplice-fan-repo/index.json";
 int main (int argc, char *argv[]) {
 
   try { // Ensure APP_DIR exists
